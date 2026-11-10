@@ -53,7 +53,25 @@ Log file: {1}</value>
     <value>Backup file was not found: {0}</value>
   </data>
   <data name="ErrorOriginalTableAmbiguous" xml:space="preserve">
-    <value>The current table differs from the backup and the launcher has no record of the installed translation. Verify the game files, then move the old backup at '{0}' to a safe location and retry.</value>
+    <value>The launcher cannot confirm which table is the original yet. Click Play to recover the translation in the launcher, then try resetting again.</value>
+  </data>
+  <data name="ModRecoveryTitle" xml:space="preserve">
+    <value>Translation recovery</value>
+  </data>
+  <data name="ModRecoveryChoose" xml:space="preserve">
+    <value>The launcher found two different tables and could not identify the original. Choose which table to build on. If you just updated or repaired the game, choose the current table. If the game was already translated, you can choose the backup. The launcher will keep both copies.</value>
+  </data>
+  <data name="ModRecoveryDifferentTables" xml:space="preserve">
+    <value>The tables have different sets of rows. The launcher can install the translation over the current game table and keep both copies.</value>
+  </data>
+  <data name="ModRecoveryUseCurrent" xml:space="preserve">
+    <value>Current table</value>
+  </data>
+  <data name="ModRecoveryUseBackup" xml:space="preserve">
+    <value>Backup</value>
+  </data>
+  <data name="ModRecoveryCancelled" xml:space="preserve">
+    <value>Translation recovery canceled.</value>
   </data>
   <data name="ErrorPreparedSourceChanged" xml:space="preserve">
     <value>The game table or its backup changed during preparation. Check for updates again.</value>
@@ -249,6 +267,12 @@ Log file: {1}</value>
   </data>
   <data name="ModMinimize" xml:space="preserve">
     <value>Minimize</value>
+  </data>
+  <data name="ModMaximize" xml:space="preserve">
+    <value>Maximize</value>
+  </data>
+  <data name="ModRestoreWindow" xml:space="preserve">
+    <value>Restore window size</value>
   </data>
   <data name="ModClose" xml:space="preserve">
     <value>Close</value>

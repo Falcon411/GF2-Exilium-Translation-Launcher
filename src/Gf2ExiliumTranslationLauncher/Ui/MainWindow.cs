@@ -228,20 +228,74 @@ internal sealed partial class MainWindow : Window
                 _progress.Value = value * 100;
             }
         });
-        var warning = await _modLaunchService.PrepareAndLaunchAsync(_config, phase =>
+        using var cancellation = new CancellationTokenSource();
+        string? warning;
+        try
         {
-            _progress.IsVisible = phase == "BusyDownloadingTranslation";
-            if (_progress.IsVisible)
+            warning = await _modLaunchService.PrepareAndLaunchAsync(_config, phase =>
             {
-                _progress.Value = 0;
-            }
-            ShowStatus(phase);
-        }, progress, CancellationToken.None);
+                _progress.IsVisible = phase == "BusyDownloadingTranslation";
+                if (_progress.IsVisible)
+                {
+                    _progress.Value = 0;
+                }
+                ShowStatus(phase);
+            }, progress, cancellation.Token, async canUseBackup =>
+            {
+                var choice = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                    () => ChooseRecoverySourceAsync(canUseBackup));
+                if (choice is null)
+                {
+                    cancellation.Cancel();
+                }
+
+                return choice;
+            });
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            ShowStatus("ModRecoveryCancelled");
+            return;
+        }
         var launched = AppText.Get("StatusGameLaunched");
         var comparison = _config.LastComparison is null ? null : UpdateService.GetComparisonStatus(_config);
         var detail = warning ?? comparison;
         SetStatus(detail is null ? launched : $"{launched} {detail}");
         await RefreshCoverageAsync();
+    }
+
+    private Task<TranslationRecoveryChoice?> ChooseRecoverySourceAsync(bool canUseBackup)
+    {
+        _progress.IsVisible = false;
+        var prompt = new Window
+        {
+            Title = AppText.Get("ModRecoveryTitle"),
+            Width = 520,
+            SizeToContent = SizeToContent.Height,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        var current = new Button { Content = AppText.Get("ModRecoveryUseCurrent") };
+        var backup = new Button { Content = AppText.Get("ModRecoveryUseBackup"), IsVisible = canUseBackup };
+        var cancel = new Button { Content = AppText.Get("ButtonCancel") };
+        current.Click += (_, _) => prompt.Close(TranslationRecoveryChoice.CurrentTable);
+        backup.Click += (_, _) => prompt.Close(TranslationRecoveryChoice.Backup);
+        cancel.Click += (_, _) => prompt.Close(null);
+        prompt.Content = new StackPanel
+        {
+            Margin = new Thickness(20),
+            Spacing = 12,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = AppText.Get(canUseBackup ? "ModRecoveryChoose" : "ModRecoveryDifferentTables"),
+                    TextWrapping = TextWrapping.Wrap
+                },
+                new WrapPanel { Children = { current, backup, cancel } }
+            }
+        };
+        return prompt.ShowDialog<TranslationRecoveryChoice?>(this);
     }
 
     private async Task RestoreAllAsync()

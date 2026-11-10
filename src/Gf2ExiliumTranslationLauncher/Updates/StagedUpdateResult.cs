@@ -10,4 +10,11 @@ public sealed record StagedUpdateResult(
     string? BackupFileSha256,
     string ExportFilePath,
     string ExportSha256,
-    TranslationComparison? Comparison);
+    TranslationComparison? Comparison,
+    TranslationRecoveryChoice? Recovery = null);
+
+public enum TranslationRecoveryChoice
+{
+    CurrentTable,
+    Backup
+}

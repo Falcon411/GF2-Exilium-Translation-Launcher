@@ -53,7 +53,25 @@
     <value>Файл резервной копии не найден: {0}</value>
   </data>
   <data name="ErrorOriginalTableAmbiguous" xml:space="preserve">
-    <value>Текущая таблица отличается от резервной копии, а в настройках нет данных об установленном переводе. Проверьте файлы игры, затем перенесите старую резервную копию «{0}» в безопасное место и повторите попытку.</value>
+    <value>Лаунчер пока не может подтвердить, какая таблица оригинальная. Нажмите «Запустить», чтобы пройти восстановление в лаунчере, затем повторите сброс.</value>
+  </data>
+  <data name="ModRecoveryTitle" xml:space="preserve">
+    <value>Восстановление перевода</value>
+  </data>
+  <data name="ModRecoveryChoose" xml:space="preserve">
+    <value>Лаунчер нашёл две разные таблицы и не смог определить оригинал. Выберите, на какой таблице собрать перевод. Если вы только что обновили или восстановили игру, выберите текущую. Если игра уже была переведена, можно выбрать резервную. Лаунчер сохранит обе копии.</value>
+  </data>
+  <data name="ModRecoveryDifferentTables" xml:space="preserve">
+    <value>В таблицах разные наборы строк. Лаунчер может установить перевод поверх текущей таблицы игры и сохранить обе копии.</value>
+  </data>
+  <data name="ModRecoveryUseCurrent" xml:space="preserve">
+    <value>Текущая таблица</value>
+  </data>
+  <data name="ModRecoveryUseBackup" xml:space="preserve">
+    <value>Резервная копия</value>
+  </data>
+  <data name="ModRecoveryCancelled" xml:space="preserve">
+    <value>Восстановление перевода отменено.</value>
   </data>
   <data name="ErrorPreparedSourceChanged" xml:space="preserve">
     <value>Таблица игры или её резервная копия изменилась во время подготовки. Проверьте обновления заново.</value>
@@ -249,6 +267,12 @@
   </data>
   <data name="ModMinimize" xml:space="preserve">
     <value>Свернуть</value>
+  </data>
+  <data name="ModMaximize" xml:space="preserve">
+    <value>Развернуть</value>
+  </data>
+  <data name="ModRestoreWindow" xml:space="preserve">
+    <value>Восстановить размер окна</value>
   </data>
   <data name="ModClose" xml:space="preserve">
     <value>Закрыть</value>

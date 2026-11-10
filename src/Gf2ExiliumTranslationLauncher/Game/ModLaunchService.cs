@@ -13,7 +13,8 @@ internal sealed class ModLaunchService(UpdateService updateService, GameLauncher
         LauncherConfig config,
         Action<string> reportPhase,
         IProgress<double>? downloadProgress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<bool, Task<TranslationRecoveryChoice?>> chooseRecoverySource)
     {
         ValidateGame(config);
         reportPhase("BusyCheckingGitLab");
@@ -32,7 +33,8 @@ internal sealed class ModLaunchService(UpdateService updateService, GameLauncher
                     ?? throw new InvalidOperationException("The translation check returned no package metadata.");
                 reportPhase("BusyDownloadingTranslation");
                 staged = await Task.Run(() => updateService.StageAsync(
-                    config, metadata, check.AlternateMetadata, downloadProgress, cancellationToken), cancellationToken);
+                    config, metadata, check.AlternateMetadata, downloadProgress, cancellationToken, chooseRecoverySource),
+                    cancellationToken);
             }
 
             if (check.Availability != UpdateAvailability.LocalFallback
@@ -130,7 +132,7 @@ internal sealed class ModLaunchService(UpdateService updateService, GameLauncher
             }
             else if (string.IsNullOrWhiteSpace(config.LastGeneratedFileSha256) && currentHash != backupHash)
             {
-                throw new LauncherException(AppText.Format("ErrorOriginalTableAmbiguous", mainBackup));
+                throw new LauncherException(AppText.Get("ErrorOriginalTableAmbiguous"));
             }
         }
 

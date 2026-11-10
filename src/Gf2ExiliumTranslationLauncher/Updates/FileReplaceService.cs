@@ -67,6 +67,26 @@ public static class FileReplaceService
         }
     }
 
+    internal static async Task PreserveRecoveryCopiesAsync(
+        string configDirectory, string target, string targetHash, string backupHash, CancellationToken cancellationToken)
+    {
+        var directory = Path.Combine(configDirectory, "recovery", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var currentCopy = Path.Combine(directory, Path.GetFileName(target));
+        var backupCopy = Path.Combine(directory, Path.GetFileName(GetBackupPath(target)));
+        File.Copy(target, currentCopy);
+        File.Copy(GetBackupPath(target), backupCopy);
+        if (await FileHash.ComputeSha256Async(currentCopy, cancellationToken) != targetHash
+            || await FileHash.ComputeSha256Async(backupCopy, cancellationToken) != backupHash
+            || await FileHash.ComputeSha256Async(target, cancellationToken) != targetHash
+            || await FileHash.ComputeSha256Async(GetBackupPath(target), cancellationToken) != backupHash)
+        {
+            throw new LauncherException(Localization.AppText.Get("ErrorPreparedSourceChanged"));
+        }
+
+        AppLog.Info($"Preserved both translation tables before recovery. Directory={directory}");
+    }
+
     public static string GetBackupPath(string targetFilePath)
         => Path.ChangeExtension(targetFilePath, ".bak");
 

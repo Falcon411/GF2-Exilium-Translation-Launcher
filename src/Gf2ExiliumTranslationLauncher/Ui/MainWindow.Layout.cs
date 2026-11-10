@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -7,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Gf2ExiliumTranslationLauncher.Localization;
+using ResizeHit = Avalonia.Controls.Win32Properties.Win32HitTestValue;
 
 namespace Gf2ExiliumTranslationLauncher.Ui;
 
@@ -23,6 +25,7 @@ internal sealed partial class MainWindow
     private readonly Button _settings = new();
     private readonly Button _menu = new();
     private readonly Button _minimize = new();
+    private readonly Button _maximize = new();
     private readonly Button _close = new();
     private readonly Grid _settingsOverlay = new() { IsVisible = false };
     private readonly TextBlock _settingsStatus = new() { TextWrapping = TextWrapping.Wrap };
@@ -32,13 +35,38 @@ internal sealed partial class MainWindow
     {
         Background = Shell;
         Foreground = TextMain;
+        CanResize = true;
+        CanMaximize = true;
+        if (OperatingSystem.IsWindows())
+        {
+            const uint resizableFrame = 0x00040000; // WS_THICKFRAME, for native resizing without drawn borders.
+            Win32Properties.AddWindowStylesCallback(this, (style, extendedStyle) => (style | resizableFrame, extendedStyle));
+            Win32Properties.AddWndProcHookCallback(this, HandleWindowFrame);
+        }
         WindowDecorations = WindowDecorations.None;
-        CanResize = false;
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            Opened += (_, _) =>
+            {
+                if (TryGetPlatformHandle() is { } platformHandle)
+                {
+                    const uint borderColorAttribute = 34;
+                    const uint noBorderColor = 0xfffffffe;
+                    DwmSetWindowAttribute(platformHandle.Handle, borderColorAttribute, noBorderColor, sizeof(uint));
+                }
+            };
+        }
+        MinWidth = 740;
+        MinHeight = 420;
         UseLayoutRounding = true;
         if (Screens.Primary is { } screen)
         {
-            Width = Math.Min(1240, screen.WorkingArea.Width / screen.Scaling - 24);
-            Height = Math.Min(650, screen.WorkingArea.Height / screen.Scaling - 28);
+            var availableWidth = screen.WorkingArea.Width / screen.Scaling - 24;
+            var availableHeight = screen.WorkingArea.Height / screen.Scaling - 28;
+            MinWidth = Math.Min(MinWidth, availableWidth);
+            MinHeight = Math.Min(MinHeight, availableHeight);
+            Width = Math.Min(Width, availableWidth);
+            Height = Math.Min(Height, availableHeight);
         }
 
         StyleActionButton(_play, primary: true);
@@ -55,6 +83,16 @@ internal sealed partial class MainWindow
         _settings.Click += (_, _) => SetSettingsVisible(!_settingsOverlay.IsVisible);
         _menu.Click += (_, _) => SetSettingsVisible(true);
         _minimize.Click += (_, _) => WindowState = WindowState.Minimized;
+        _maximize.Click += (_, _) => WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+        PropertyChanged += (_, args) =>
+        {
+            if (args.Property == WindowStateProperty)
+            {
+                UpdateMaximizeButton();
+            }
+        };
         _close.Click += (_, _) => Close();
         KeyDown += (_, args) =>
         {
@@ -89,17 +127,87 @@ internal sealed partial class MainWindow
         main.Children.Add(top);
         main.Children.Add(bodyFrame);
 
-        var bodyWithSettings = new Grid();
+        var bodyWithSettings = new Grid { Background = Shell };
         bodyWithSettings.Children.Add(main);
         BuildSettings();
         bodyWithSettings.Children.Add(_settingsOverlay);
-        return new Border
+        return bodyWithSettings;
+    }
+
+    private nint HandleWindowFrame(nint window, uint message, nint wParam, nint lParam, ref bool handled)
+    {
+        const uint calculateClientArea = 0x0083;
+        const uint nonClientHitTest = 0x0084;
+        const double grip = 5;
+        if (message == calculateClientArea && wParam != 0 && IsZoomed(window))
         {
-            BorderBrush = Divider,
-            BorderThickness = new Thickness(1),
-            Background = Shell,
-            Child = bodyWithSettings
+            FitMaximizedClientArea(lParam);
+            handled = true;
+            return 0;
+        }
+        if (message != nonClientHitTest || WindowState != WindowState.Normal)
+        {
+            return 0;
+        }
+
+        var coordinates = lParam.ToInt32();
+        var point = this.PointToClient(new PixelPoint(
+            unchecked((short)coordinates), unchecked((short)(coordinates >> 16))));
+        var horizontal = point.X < grip ? -1 : point.X >= ClientSize.Width - grip ? 1 : 0;
+        var vertical = point.Y < grip ? -1 : point.Y >= ClientSize.Height - grip ? 1 : 0;
+        var hit = (horizontal, vertical) switch
+        {
+            (-1, -1) => ResizeHit.TopLeft,
+            (0, -1) => ResizeHit.Top,
+            (1, -1) => ResizeHit.TopRight,
+            (-1, 0) => ResizeHit.Left,
+            (1, 0) => ResizeHit.Right,
+            (-1, 1) => ResizeHit.BottomLeft,
+            (0, 1) => ResizeHit.Bottom,
+            (1, 1) => ResizeHit.BottomRight,
+            _ => ResizeHit.Client
         };
+        if (hit == ResizeHit.Client)
+        {
+            return 0;
+        }
+
+        handled = true;
+        return (nint)hit;
+    }
+
+    private void FitMaximizedClientArea(nint clientRect)
+    {
+        // The first RECT in NCCALCSIZE_PARAMS contains the proposed window bounds.
+        var left = Marshal.ReadInt32(clientRect, 0);
+        var top = Marshal.ReadInt32(clientRect, 4);
+        var right = Marshal.ReadInt32(clientRect, 8);
+        var bottom = Marshal.ReadInt32(clientRect, 12);
+        var center = new PixelPoint(left + (right - left) / 2, top + (bottom - top) / 2);
+        if (Screens.ScreenFromPoint(center) is { } screen)
+        {
+            var area = screen.WorkingArea;
+            Marshal.WriteInt32(clientRect, 0, Math.Max(left, area.X));
+            Marshal.WriteInt32(clientRect, 4, Math.Max(top, area.Y));
+            Marshal.WriteInt32(clientRect, 8, Math.Min(right, area.Right));
+            Marshal.WriteInt32(clientRect, 12, Math.Min(bottom, area.Bottom));
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool IsZoomed(nint window);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(nint window, uint attribute, in uint value, uint size);
+
+    private void UpdateMaximizeButton()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        StyleTitleButton(_maximize, maximized ? "ModRestoreWindow" : "ModMaximize", ButtonIcon(
+            maximized
+                ? "F0 M5 0H16V11H13V9H14V2H7V5H5Z M0 5H11V16H0Z M2 7V14H9V7Z"
+                : "F0 M0 0H16V16H0Z M2 2V14H14V2Z",
+            15));
     }
 
     private Control BuildTitleBar()
@@ -115,6 +223,7 @@ internal sealed partial class MainWindow
             + "L4.24 8.79 5.04 7.3 3.22 5.38 5.38 3.22 7.3 5.04Z M12 8A4 4 0 1 0 12 16A4 4 0 1 0 12 8Z", 18));
         StyleTitleButton(_minimize, "ModMinimize",
             new Border { Width = 16, Height = 3, Background = TextMain });
+        UpdateMaximizeButton();
         StyleTitleButton(_close, "ModClose", ButtonIcon(
             "M4 2L10 8L16 2L18 4L12 10L18 16L16 18L10 12L4 18L2 16L8 10L2 4Z", 17));
         AutomationProperties.SetName(_menu, AppText.Get("ModSettings"));
@@ -134,7 +243,7 @@ internal sealed partial class MainWindow
                 Label($"v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}", 13, TextMuted)
             }
         };
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Children = { _settings, _minimize, _close } };
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Children = { _settings, _minimize, _maximize, _close } };
         var title = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Height = 38, Background = Shell };
         Grid.SetColumn(buttons, 1);
         title.Children.Add(brand);
@@ -307,6 +416,7 @@ internal sealed partial class MainWindow
                 done
             }
         };
+        _settingsOverlay.Margin = new Thickness(0, 38, 0, 0);
         _settingsOverlay.Background = Brush.Parse("#B010171A");
         _settingsOverlay.Children.Add(new Border
         {

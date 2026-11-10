@@ -98,7 +98,8 @@ public sealed class UpdateService
         GitLabFileMetadata metadata,
         GitLabFileMetadata? alternate,
         IProgress<double>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<bool, Task<TranslationRecoveryChoice?>>? chooseRecoverySource = null)
     {
         ValidateForInstall(config);
 
@@ -128,8 +129,9 @@ public sealed class UpdateService
             }
 
             var translationEntries = await _translationJsonReader.ReadAsync(jsonFile, cancellationToken);
-            var (originalRows, targetHash, backupHash) =
-                await ReadSourceRowsAsync(targetPath, config.LastGeneratedFileSha256, ready?.ContentSha256, cancellationToken);
+            var (originalRows, targetHash, backupHash, recovery) = await ReadSourceRowsAsync(
+                targetPath, config.LastGeneratedFileSha256, ready?.ContentSha256,
+                translationEntries, chooseRecoverySource, cancellationToken);
             var jsonRows = BuildOutputRows(originalRows, translationEntries);
             IReadOnlyList<TranslationTableRow>? readyRows = null;
             TranslationComparison? comparison = null;
@@ -160,7 +162,7 @@ public sealed class UpdateService
             keepStagedFiles = true;
 
             return new StagedUpdateResult(AppText.Get("StageUpdatePrepared"), stagedFile,
-                selected, installedHash, targetPath, targetHash, backupHash, exportFile, exportHash, comparison);
+                selected, installedHash, targetPath, targetHash, backupHash, exportFile, exportHash, comparison, recovery);
         }
         finally
         {
@@ -331,13 +333,21 @@ public sealed class UpdateService
             throw new LauncherException(AppText.Get("ErrorPreparedChecksumMismatch"));
         }
 
-        string? installedBackupPath = backupPath;
-        if (stagedUpdate.BackupFileSha256 is null || !HashesEqual(stagedHash, stagedUpdate.TargetFileSha256))
+        if (stagedUpdate.Recovery is not null)
         {
+            await FileReplaceService.PreserveRecoveryCopiesAsync(
+                _configService.ConfigDirectory, targetPath, stagedUpdate.TargetFileSha256,
+                stagedUpdate.BackupFileSha256!, cancellationToken);
+        }
+
+        var refreshBackup = stagedUpdate.BackupFileSha256 is null
+            || stagedUpdate.Recovery == TranslationRecoveryChoice.CurrentTable;
+        string? installedBackupPath = backupPath;
+        if (refreshBackup || !HashesEqual(stagedHash, stagedUpdate.TargetFileSha256))
+        {
+            EnsureGameNotRunning(config);
             installedBackupPath = FileReplaceService.ReplaceWithBackup(
-                stagedUpdate.StagedFilePath,
-                targetPath,
-                refreshBackup: stagedUpdate.BackupFileSha256 is null);
+                stagedUpdate.StagedFilePath, targetPath, refreshBackup);
         }
 
         config.LastContentSha256 = stagedUpdate.Metadata.ContentSha256;
@@ -409,9 +419,11 @@ public sealed class UpdateService
         }
     }
 
-    private async Task<(IReadOnlyList<TranslationTableRow> Rows, string TargetHash, string? BackupHash)>
-        ReadSourceRowsAsync(
-            string targetPath, string lastGeneratedHash, string? readyHash, CancellationToken cancellationToken)
+    private async Task<(IReadOnlyList<TranslationTableRow> Rows, string TargetHash, string? BackupHash,
+        TranslationRecoveryChoice? Recovery)> ReadSourceRowsAsync(
+            string targetPath, string lastGeneratedHash, string? readyHash,
+            IReadOnlyList<TranslationEntry> entries, Func<bool, Task<TranslationRecoveryChoice?>>? chooseRecoverySource,
+            CancellationToken cancellationToken)
     {
         if (!File.Exists(targetPath))
         {
@@ -433,20 +445,90 @@ public sealed class UpdateService
         {
             using var backupReadLock = File.OpenRead(backupPath);
             var backupHash = await FileHash.ComputeSha256Async(backupPath, cancellationToken);
+            var backupRows = await _translationProtobufWriter.ReadRowsAsync(backupPath, cancellationToken);
             if (!isGenerated && !HashesEqual(targetHash, backupHash))
             {
-                AppLog.Warn($"Cannot identify the original table. Target={targetPath}, Backup={backupPath}");
-                throw new LauncherException(AppText.Format("ErrorOriginalTableAmbiguous", backupPath));
+                var currentRows = await _translationProtobufWriter.ReadRowsAsync(targetPath, cancellationToken);
+                var matchingIds = currentRows.Count > 0 && currentRows.Count == backupRows.Count
+                    && currentRows.Zip(backupRows).All(pair => pair.First.Id == pair.Second.Id);
+                var recovery = matchingIds ? IdentifyRecoverySource(currentRows, backupRows, entries, cancellationToken) : null;
+                if (recovery is null)
+                {
+                    if (chooseRecoverySource is null)
+                    {
+                        throw new LauncherException(AppText.Get("ErrorOriginalTableAmbiguous"));
+                    }
+
+                    recovery = await chooseRecoverySource(matchingIds);
+                    if (recovery is null)
+                    {
+                        throw new OperationCanceledException(cancellationToken);
+                    }
+                }
+
+                if (recovery == TranslationRecoveryChoice.Backup && !matchingIds)
+                {
+                    throw new LauncherException(AppText.Get("ErrorPreparedSourceChanged"));
+                }
+
+                AppLog.Info($"Recovering the translation using {recovery}. Target={targetPath}, Backup={backupPath}");
+                var rows = recovery == TranslationRecoveryChoice.Backup ? backupRows : currentRows;
+                return (rows, targetHash, backupHash, recovery);
             }
 
             AppLog.Info($"Using backup rows as translation source. Backup={backupPath}");
-            var backupRows = await _translationProtobufWriter.ReadRowsAsync(backupPath, cancellationToken);
-            return (backupRows, targetHash, backupHash);
+            return (backupRows, targetHash, backupHash, null);
         }
 
         AppLog.Info($"Using current game table as translation source. Target={targetPath}");
         var targetRows = await _translationProtobufWriter.ReadRowsAsync(targetPath, cancellationToken);
-        return (targetRows, targetHash, null);
+        return (targetRows, targetHash, null, null);
+    }
+
+    private static TranslationRecoveryChoice? IdentifyRecoverySource(
+        IReadOnlyList<TranslationTableRow> current, IReadOnlyList<TranslationTableRow> backup,
+        IReadOnlyList<TranslationEntry> entries, CancellationToken cancellationToken)
+    {
+        const int minimumMatchingTexts = 10;
+        var translations = new Dictionary<uint, TranslationEntry>();
+        foreach (var entry in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            translations[(uint)entry.Id] = entry;
+        }
+
+        var currentOriginals = new HashSet<string>(StringComparer.Ordinal);
+        var backupOriginals = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < current.Count; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var currentRow = current[i];
+            var backupRow = backup[i];
+            if (currentRow.Text == backupRow.Text || !translations.TryGetValue(currentRow.Id, out var entry)
+                || string.IsNullOrWhiteSpace(entry.Original) || string.IsNullOrWhiteSpace(entry.Translation))
+            {
+                continue;
+            }
+
+            if (currentRow.Text == entry.Original && backupRow.Text == entry.Translation)
+            {
+                currentOriginals.Add(entry.Original);
+            }
+            else if (backupRow.Text == entry.Original && currentRow.Text == entry.Translation)
+            {
+                backupOriginals.Add(entry.Original);
+            }
+        }
+
+        AppLog.Info($"Compared recovery sources with the verified translation package. Current={currentOriginals.Count}, Backup={backupOriginals.Count}");
+        if (backupOriginals.Count >= minimumMatchingTexts && currentOriginals.Count == 0)
+        {
+            return TranslationRecoveryChoice.Backup;
+        }
+
+        return currentOriginals.Count >= minimumMatchingTexts && backupOriginals.Count == 0
+            ? TranslationRecoveryChoice.CurrentTable
+            : null;
     }
 
     private static async Task<bool> MatchesFileHashAsync(
