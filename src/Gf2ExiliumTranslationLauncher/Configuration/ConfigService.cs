@@ -11,18 +11,37 @@ public sealed class ConfigService
         WriteIndented = true
     };
 
-    public string ConfigDirectory { get; } = GetConfigDirectory();
+    private const int SharingViolation = unchecked((int)0x80070020);
+
+    public string ConfigDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Gf2ExiliumTranslationLauncher");
 
     public string ConfigPath => Path.Combine(ConfigDirectory, "config.json");
 
-    public string StagingDirectory { get; } = GetStagingDirectory();
+    public string StagingDirectory => Path.Combine(ConfigDirectory, "staging");
 
     public string TranslationExportPath => Path.Combine(ConfigDirectory, "translations.local.json");
 
+    internal FileStream? TryAcquireSession()
+    {
+        Directory.CreateDirectory(ConfigDirectory);
+        try
+        {
+            return new FileStream(Path.Combine(ConfigDirectory, "launcher.lock"),
+                FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException exception) when (exception.HResult == SharingViolation)
+        {
+            return null;
+        }
+    }
+
     public LauncherConfig Load()
     {
-        AppLog.Info($"Loading config. ConfigPath={ConfigPath}, StagingDirectory={StagingDirectory}");
-        if (!File.Exists(ConfigPath))
+        var legacyPath = Path.Combine(LauncherPaths.ExecutableDirectory, "config.json");
+        var path = File.Exists(ConfigPath) ? ConfigPath : legacyPath;
+        AppLog.Info($"Loading config. ConfigPath={path}, StagingDirectory={StagingDirectory}");
+        if (!File.Exists(path))
         {
             AppLog.Info("Config file does not exist. Using defaults.");
             var config = new LauncherConfig();
@@ -33,9 +52,14 @@ public sealed class ConfigService
 
         try
         {
-            var json = File.ReadAllText(ConfigPath);
+            var json = File.ReadAllText(path);
             var config = JsonSerializer.Deserialize<LauncherConfig>(json, SerializerOptions) ?? new LauncherConfig();
             config.ApplyDefaults();
+            if (!string.Equals(path, ConfigPath, StringComparison.OrdinalIgnoreCase))
+            {
+                ImportLegacyConfig(path, json);
+            }
+
             AppLog.Info($"Config loaded. {DescribeConfig(config)}");
             return config;
         }
@@ -43,10 +67,10 @@ public sealed class ConfigService
         {
             AppLog.Error("Config JSON is corrupted. Backing it up and using defaults.", exception);
             // Corrupted JSON: backup the file so the user can potentially fix it
-            var backupPath = $"{ConfigPath}.corrupted.{DateTime.UtcNow:yyyyMMddHHmmss}.bak";
+            var backupPath = $"{path}.corrupted.{DateTime.UtcNow:yyyyMMddHHmmss}.bak";
             try
             {
-                File.Move(ConfigPath, backupPath);
+                File.Move(path, backupPath);
                 AppLog.Warn($"Corrupted config moved to {backupPath}");
             }
             catch (Exception backupException)
@@ -99,11 +123,38 @@ public sealed class ConfigService
         }
     }
 
-    private static string GetConfigDirectory()
-        => LauncherPaths.ExecutableDirectory;
+    private void ImportLegacyConfig(string path, string json)
+    {
+        var temporary = $"{ConfigPath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            Directory.CreateDirectory(ConfigDirectory);
+            File.WriteAllText(temporary, json);
+            File.Move(temporary, ConfigPath);
+            AppLog.Info($"Imported legacy config from {path} to {ConfigPath}");
 
-    private static string GetStagingDirectory()
-        => Path.Combine(LauncherPaths.ExecutableDirectory, "staging");
+            var legacyExport = Path.Combine(LauncherPaths.ExecutableDirectory, "translations.local.json");
+            if (File.Exists(legacyExport) && !File.Exists(TranslationExportPath))
+            {
+                File.Copy(legacyExport, TranslationExportPath);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            AppLog.Warn($"Could not finish importing legacy settings: {exception.Message}");
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(temporary);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                AppLog.Warn($"Could not remove temporary settings: {exception.Message}");
+            }
+        }
+    }
 
     private static string DescribeConfig(LauncherConfig config)
         => $"GitLabBaseUrl={config.GitLabBaseUrl}, Project={config.ProjectIdOrPath}, Ref={config.Ref}, "

@@ -79,6 +79,9 @@ Log file: {1}</value>
   <data name="ErrorGitLabHeaderMissing" xml:space="preserve">
     <value>GitLab did not return the expected {0} header.</value>
   </data>
+  <data name="ErrorLauncherAlreadyRunning" xml:space="preserve">
+    <value>The launcher is already open. Close it before starting another copy.</value>
+  </data>
   <data name="ErrorGitLabRateLimited" xml:space="preserve">
     <value>GitLab temporarily rate-limited requests (429). Try again in {0} seconds.</value>
   </data>
