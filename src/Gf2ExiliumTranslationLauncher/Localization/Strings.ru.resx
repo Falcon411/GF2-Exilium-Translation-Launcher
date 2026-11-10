@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>GF2 Exilium Translation Launcher</value>
+  </data>
+  <data name="BrowseGameExecutableTitle" xml:space="preserve">
+    <value>Выберите {0}</value>
+  </data>
+  <data name="ButtonBrowse" xml:space="preserve">
+    <value>Обзор</value>
+  </data>
+  <data name="ButtonCancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="ButtonRestoreOriginal" xml:space="preserve">
+    <value>Восстановить оригинал</value>
+  </data>
+  <data name="ButtonRestoreOriginalConfirm" xml:space="preserve">
+    <value>Восстановить оригинал</value>
+  </data>
+  <data name="BusyApplyingTranslation" xml:space="preserve">
+    <value>Применение перевода...</value>
+  </data>
+  <data name="BusyCheckingGitLab" xml:space="preserve">
+    <value>Проверка GitLab...</value>
+  </data>
+  <data name="BusyDownloadingTranslation" xml:space="preserve">
+    <value>Загрузка перевода...</value>
+  </data>
+  <data name="BusyRestoringOriginal" xml:space="preserve">
+    <value>Восстановление оригинального файла...</value>
+  </data>
+  <data name="DetailErrorWithLog" xml:space="preserve">
+    <value>{0}
+Файл лога: {1}</value>
+  </data>
+  <data name="DetailWrongExecutableSelected" xml:space="preserve">
+    <value>Выберите {0}.</value>
+  </data>
+  <data name="ErrorBackupFileMissing" xml:space="preserve">
+    <value>Файл резервной копии не найден: {0}</value>
+  </data>
+  <data name="ErrorOriginalTableAmbiguous" xml:space="preserve">
+    <value>Текущая таблица отличается от резервной копии, а в настройках нет данных об установленном переводе. Проверьте файлы игры, затем перенесите старую резервную копию «{0}» в безопасное место и повторите попытку.</value>
+  </data>
+  <data name="ErrorPreparedSourceChanged" xml:space="preserve">
+    <value>Таблица игры или её резервная копия изменилась во время подготовки. Проверьте обновления заново.</value>
+  </data>
+  <data name="ErrorDownloadedChecksumMismatch" xml:space="preserve">
+    <value>Контрольная сумма загруженного файла не совпала с метаданными GitLab.</value>
+  </data>
+  <data name="ErrorFileNotFound" xml:space="preserve">
+    <value>Файл не найден: {0}</value>
+  </data>
+  <data name="ErrorGameAlreadyRunning" xml:space="preserve">
+    <value>Игра ({0}) уже запущена.</value>
+  </data>
+  <data name="ErrorGameExecutableNotFound" xml:space="preserve">
+    <value>Настроенный исполняемый файл игры не найден.</value>
+  </data>
+  <data name="ErrorGameExecutableRequired" xml:space="preserve">
+    <value>Укажите путь к исполняемому файлу игры перед запуском.</value>
+  </data>
+  <data name="ErrorGameProcessStartFailed" xml:space="preserve">
+    <value>Не удалось запустить процесс игры.</value>
+  </data>
+  <data name="ErrorGitLabHeaderMissing" xml:space="preserve">
+    <value>GitLab не вернул ожидаемый заголовок {0}.</value>
+  </data>
+  <data name="ErrorGitLabStatusCheck" xml:space="preserve">
+    <value>GitLab вернул {0} {1} при проверке удаленного файла.</value>
+  </data>
+  <data name="ErrorGitLabStatusDownload" xml:space="preserve">
+    <value>GitLab вернул {0} {1} при загрузке файла.</value>
+  </data>
+  <data name="ErrorInputFilePathRequired" xml:space="preserve">
+    <value>Требуется путь к входному файлу.</value>
+  </data>
+  <data name="ErrorInputUnexpectedFormat" xml:space="preserve">
+    <value>Строка имеет неожиданный формат: '{0}'.</value>
+  </data>
+  <data name="ErrorInvalidGameExecutablePath" xml:space="preserve">
+    <value>Выбранный путь к исполняемому файлу игры некорректен.</value>
+  </data>
+  <data name="ErrorJsonRootObjectRequired" xml:space="preserve">
+    <value>Входной JSON должен быть объектом, где ключи являются ID перевода.</value>
+  </data>
+  <data name="ErrorNegativeTranslationId" xml:space="preserve">
+    <value>Отрицательный ID перевода не поддерживается: {0}.</value>
+  </data>
+  <data name="ErrorNetworkGitLabCheck" xml:space="preserve">
+    <value>Ошибка сети при подключении к GitLab: {0}</value>
+  </data>
+  <data name="ErrorNetworkGitLabDownload" xml:space="preserve">
+    <value>Ошибка сети при загрузке из GitLab: {0}</value>
+  </data>
+  <data name="ErrorOriginalEnUsTableMissing" xml:space="preserve">
+    <value>Не удалось найти исходную EN-US таблицу. Ожидался путь '{0}'.</value>
+  </data>
+  <data name="ErrorOutputFilePathRequired" xml:space="preserve">
+    <value>Требуется путь к выходному файлу.</value>
+  </data>
+  <data name="ErrorParseTranslationId" xml:space="preserve">
+    <value>Не удалось прочитать ID перевода из '{0}'.</value>
+  </data>
+  <data name="ErrorParseTranslationJson" xml:space="preserve">
+    <value>Не удалось разобрать JSON перевода '{0}'. Строка парсера {1}, байт {2}.</value>
+  </data>
+  <data name="ErrorPreparedChecksumMismatch" xml:space="preserve">
+    <value>Контрольная сумма подготовленного перевода не совпала с ожидаемым значением.</value>
+  </data>
+  <data name="ErrorPreparedFileMissing" xml:space="preserve">
+    <value>Подготовленный файл перевода больше не существует. Загрузите обновление еще раз.</value>
+  </data>
+  <data name="ErrorProblemLine" xml:space="preserve">
+    <value>Проблемная строка: {0}</value>
+  </data>
+  <data name="ErrorRestoredChecksumMismatch" xml:space="preserve">
+    <value>Контрольная сумма восстановленного файла не совпала с резервной копией.</value>
+  </data>
+  <data name="ErrorTableChunkOffsetInvalid" xml:space="preserve">
+    <value>Некорректное смещение блока таблицы перевода: {0}.</value>
+  </data>
+  <data name="ErrorTableIndexLengthInvalid" xml:space="preserve">
+    <value>Некорректная длина индекса таблицы перевода: {0}.</value>
+  </data>
+  <data name="ErrorTableTooLarge" xml:space="preserve">
+    <value>Таблица перевода {0} слишком большая: {1} байт.</value>
+  </data>
+  <data name="HintHtmlInsteadOfJson" xml:space="preserve">
+    <value>Похоже на HTML, значит GitLab мог вернуть веб-страницу вместо raw JSON.</value>
+  </data>
+  <data name="HintMergeConflict" xml:space="preserve">
+    <value>Похоже на неразрешенный маркер Git-конфликта в удаленном JSON.</value>
+  </data>
+  <data name="InstallTranslationApplied" xml:space="preserve">
+    <value>Перевод успешно применен.</value>
+  </data>
+  <data name="RestoreOriginalApplied" xml:space="preserve">
+    <value>Оригинальный файл восстановлен из резервной копии.</value>
+  </data>
+  <data name="StageUpdatePrepared" xml:space="preserve">
+    <value>Перевод загружен и подготовлен. Примените его, когда игра закрыта.</value>
+  </data>
+  <data name="StatusGameLaunched" xml:space="preserve">
+    <value>Игра запущена</value>
+  </data>
+  <data name="TextUnknown" xml:space="preserve">
+    <value>неизвестно</value>
+  </data>
+  <data name="UpdateServiceGeneratedCurrent" xml:space="preserve">
+    <value>Файл перевода создан из текущего JSON в GitLab.</value>
+  </data>
+  <data name="UpdateServiceLocalFileMissing" xml:space="preserve">
+    <value>Доступно обновление: локальный файл отсутствует.</value>
+  </data>
+  <data name="UpdateServiceMustRegenerate" xml:space="preserve">
+    <value>Доступно обновление: локальный перевод нужно пересобрать из JSON в GitLab.</value>
+  </data>
+  <data name="ValidationGitLabBaseUrl" xml:space="preserve">
+    <value>Укажите базовый URL GitLab.</value>
+  </data>
+  <data name="ValidationLocalFile" xml:space="preserve">
+    <value>Укажите путь к локальному файлу для замены.</value>
+  </data>
+  <data name="ValidationProjectId" xml:space="preserve">
+    <value>Укажите ID или путь проекта GitLab.</value>
+  </data>
+  <data name="ValidationRemoteFile" xml:space="preserve">
+    <value>Укажите путь к удаленному файлу перевода.</value>
+  </data>
+  <data name="StatusStartupOriginalRestored" xml:space="preserve">
+    <value>Восстановлен оригинал стартовых экранов</value>
+  </data>
+  <data name="StatusStartupTranslationApplied" xml:space="preserve">
+    <value>Перевод стартовых экранов установлен</value>
+  </data>
+  <data name="ErrorStartupTableUnsupported" xml:space="preserve">
+    <value>Эта версия таблицы стартовых экранов не поддерживается. Файлы игры не изменены.</value>
+  </data>
+  <data name="ErrorStartupSourceChanged" xml:space="preserve">
+    <value>Таблица стартовых экранов или её резервная копия изменилась во время подготовки. Повторите попытку.</value>
+  </data>
+  <data name="ButtonPrepareAndLaunch" xml:space="preserve">
+    <value>Подготовить перевод и запустить игру</value>
+  </data>
+  <data name="ButtonRestoreMainTable" xml:space="preserve">
+    <value>Вернуть оригинал основных текстов</value>
+  </data>
+  <data name="ButtonRestoreStartupTable" xml:space="preserve">
+    <value>Вернуть оригинал стартовых экранов</value>
+  </data>
+  <data name="ModLauncherIntro" xml:space="preserve">
+    <value>Проверяет оба пакета перевода перед запуском Girls’ Frontline 2.</value>
+  </data>
+  <data name="ModGameExecutableLabel" xml:space="preserve">
+    <value>Файл игры</value>
+  </data>
+  <data name="ModReady" xml:space="preserve">
+    <value>Можно проверить пакеты и запустить игру.</value>
+  </data>
+  <data name="ModChooseGame" xml:space="preserve">
+    <value>Для начала укажи путь к GF2_Exilium.exe.</value>
+  </data>
+  <data name="ModCheckingStartupPackage" xml:space="preserve">
+    <value>Проверяем перевод стартовых экранов…</value>
+  </data>
+  <data name="ModStartingGame" xml:space="preserve">
+    <value>Запускаем игру…</value>
+  </data>
+  <data name="ModConfirmRestoreMain" xml:space="preserve">
+    <value>Заменить основной перевод сохранённым оригиналом?</value>
+  </data>
+  <data name="ModConfirmRestoreStartup" xml:space="preserve">
+    <value>Заменить перевод стартовых экранов сохранённым оригиналом?</value>
+  </data>
+  <data name="ModPublishedSource" xml:space="preserve">
+    <value>Лаунчер сравнивает пакет JSON и готовую таблицу из GitLab.</value>
+  </data>
+  <data name="ModCustomSource" xml:space="preserve">
+    <value>Источник перевода — {0} ({1}).</value>
+  </data>
+  <data name="ErrorPublishedChecksumMissing" xml:space="preserve">
+    <value>В опубликованном релизе нет корректной контрольной суммы SHA-256.</value>
+  </data>
+  <data name="ModLauncherKicker" xml:space="preserve">
+    <value>РУССКАЯ ЛОКАЛИЗАЦИЯ</value>
+  </data>
+  <data name="ModSettings" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="ModMinimize" xml:space="preserve">
+    <value>Свернуть</value>
+  </data>
+  <data name="ModClose" xml:space="preserve">
+    <value>Закрыть</value>
+  </data>
+  <data name="ModDone" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="ModPlay" xml:space="preserve">
+    <value>Запустить</value>
+  </data>
+  <data name="ModSelectGame" xml:space="preserve">
+    <value>Выбрать игру</value>
+  </data>
+  <data name="ModPleaseWait" xml:space="preserve">
+    <value>Подождите…</value>
+  </data>
+  <data name="ModTranslationStatus" xml:space="preserve">
+    <value>Состояние перевода</value>
+  </data>
+  <data name="ModGameVersion" xml:space="preserve">
+    <value>Версия игры: {0}</value>
+  </data>
+  <data name="ModRestoreAll" xml:space="preserve">
+    <value>Сбросить весь перевод</value>
+  </data>
+  <data name="ModConfirmRestoreAll" xml:space="preserve">
+    <value>Восстановить оригинал основных текстов и стартовых экранов?</value>
+  </data>
+  <data name="ModAllRestored" xml:space="preserve">
+    <value>Перевод сброшен. Восстановлены оригинальные тексты.</value>
+  </data>
+  <data name="ModFindingGame" xml:space="preserve">
+    <value>Ищем установленную игру…</value>
+  </data>
+  <data name="ModCheckingInstallation" xml:space="preserve">
+    <value>Проверяем файлы игры и актуальность перевода…</value>
+  </data>
+  <data name="ModCheckTimedOut" xml:space="preserve">
+    <value>Проверка обновления заняла слишком много времени. Нажмите «Запустить», чтобы повторить.</value>
+  </data>
+  <data name="ModStartupInstallPending" xml:space="preserve">
+    <value>Основной перевод актуален. Стартовые экраны будут переведены перед запуском.</value>
+  </data>
+  <data name="ModCoveragePercent" xml:space="preserve">
+    <value>Покрытие основного перевода: {0:P1}</value>
+  </data>
+  <data name="ModCoverageUnavailable" xml:space="preserve">
+    <value>Покрытие основного перевода: —</value>
+  </data>
+  <data name="ModCoverageHelp" xml:space="preserve">
+    <value>Доля строк основной таблицы, в которых установленный текст непустой и отличается от оригинала.</value>
+  </data>
+  <data name="ModResetDiscovery" xml:space="preserve">
+    <value>Сбросить путь и найти игру заново</value>
+  </data>
+  <data name="ModDiscoveryFound" xml:space="preserve">
+    <value>Игра найдена автоматически.</value>
+  </data>
+  <data name="ModDiscoveryNoMatch" xml:space="preserve">
+    <value>Автопоиск не нашёл игру. Выберите файл запуска.</value>
+  </data>
+  <data name="ModDiscoverySelected" xml:space="preserve">
+    <value>Путь к игре выбран вручную.</value>
+  </data>
+  <data name="ModCachedGameVersion" xml:space="preserve">
+    <value>Версия игры по кэшу: {0}</value>
+  </data>
+  <data name="ModGameVersionUnknown" xml:space="preserve">
+    <value>Версия игры не определена</value>
+  </data>
+  <data name="ErrorTranslationDateMissing" xml:space="preserve">
+    <value>В GitLab не указана дата обновления перевода.</value>
+  </data>
+  <data name="UpdateComparePending" xml:space="preserve">
+    <value>Сравним оба перевода перед запуском игры.</value>
+  </data>
+  <data name="UpdateSourceReady" xml:space="preserve">
+    <value>готовая таблица</value>
+  </data>
+  <data name="UpdateSourceJson" xml:space="preserve">
+    <value>сборка из JSON</value>
+  </data>
+  <data name="UpdateCompared" xml:space="preserve">
+    <value>Перевод: {0}. Различий в тексте: {1:N0}.</value>
+  </data>
+  <data name="UpdateComparedIncompatible" xml:space="preserve">
+    <value>Перевод: {0}. Готовая таблица не совпадает с версией игры по ID (нет {2:N0}, лишних {3:N0}). Различий в тексте: {1:N0}.</value>
+  </data>
+  <data name="UpdateUsingLocal" xml:space="preserve">
+    <value>GitLab не ответил на проверку. Используем уже установленный перевод.</value>
+  </data>
+  <data name="ModPreviousEventBanner" xml:space="preserve">
+    <value>Предыдущий баннер события</value>
+  </data>
+  <data name="ModNextEventBanner" xml:space="preserve">
+    <value>Следующий баннер события</value>
+  </data>
+  <data name="ModOpenBannerLink" xml:space="preserve">
+    <value>Открыть баннер в браузере</value>
+  </data>
+  <data name="ModBannerLinkError" xml:space="preserve">
+    <value>Не удалось открыть баннер в браузере.</value>
+  </data>
+</root>
