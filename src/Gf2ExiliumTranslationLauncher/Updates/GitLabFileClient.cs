@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Globalization;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +20,7 @@ public sealed class GitLabFileClient
     private const string JsonProjectApi = "https://gitlab.com/api/v4/projects/83468208";
     private const string ReadyProjectApi = "https://gitlab.com/api/v4/projects/81099896";
     private readonly HttpClient _httpClient;
+    private readonly ConcurrentDictionary<Uri, DateTimeOffset> _retryAfter = new();
     private GitLabFileMetadata? _readyMetadata;
 
     public GitLabFileClient(HttpClient httpClient)
@@ -35,13 +38,9 @@ public sealed class GitLabFileClient
         var url = BuildFileUrl(config, raw: false);
         AppLog.Info(
             $"GitLab metadata request starting. Url={url}, TokenPresent={!string.IsNullOrWhiteSpace(config.PrivateToken)}");
-        using var request = new HttpRequestMessage(HttpMethod.Head, url);
-        ApplyAuthentication(request, config);
-
         try
         {
-            using var response =
-                await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await SendAsync(HttpMethod.Head, url, cancellationToken, config);
             AppLog.Info(
                 $"GitLab metadata response received. StatusCode={(int)response.StatusCode}, Reason={response.ReasonPhrase}");
             if (!response.IsSuccessStatusCode)
@@ -109,8 +108,7 @@ public sealed class GitLabFileClient
     {
         var url = $"{ReadyProjectApi}/repository/commits"
             + $"?ref_name=main&path={Game.GameInstallPaths.TranslationFileName}&per_page=1";
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, new Uri(url), cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw new LauncherException(AppText.Format(
@@ -159,9 +157,8 @@ public sealed class GitLabFileClient
             throw new LauncherException(AppText.Get("ErrorTranslationDateMissing"));
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{projectApi}/repository/commits/{commit}");
-        ApplyAuthentication(request, config);
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        var url = new Uri($"{projectApi}/repository/commits/{commit}");
+        using var response = await SendAsync(HttpMethod.Get, url, cancellationToken, config);
         if (!response.IsSuccessStatusCode)
         {
             throw new LauncherException(AppText.Format(
@@ -193,11 +190,9 @@ public sealed class GitLabFileClient
         LauncherConfig config, CancellationToken cancellationToken)
     {
         AppLog.Info($"Reading published translation release. Url={PublishedRelease}");
-        using var request = new HttpRequestMessage(HttpMethod.Get, PublishedRelease);
-        ApplyAuthentication(request, config);
         try
         {
-            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await SendAsync(HttpMethod.Get, new Uri(PublishedRelease), cancellationToken, config);
             if (!response.IsSuccessStatusCode)
             {
                 throw new LauncherException(AppText.Format(
@@ -254,13 +249,9 @@ public sealed class GitLabFileClient
         var url = config.UsesPublishedTranslationPackage ? new Uri(PublishedPackage) : BuildFileUrl(config, raw: true);
         AppLog.Info(
             $"GitLab raw download starting. Url={url}, Target={targetPath}, TokenPresent={!string.IsNullOrWhiteSpace(config.PrivateToken)}");
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        ApplyAuthentication(request, config);
-
         try
         {
-            using var response =
-                await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await SendAsync(HttpMethod.Get, url, cancellationToken, config);
             AppLog.Info(
                 $"GitLab raw download response received. StatusCode={(int)response.StatusCode}, Reason={response.ReasonPhrase}");
             if (!response.IsSuccessStatusCode)
@@ -323,13 +314,9 @@ public sealed class GitLabFileClient
         var url = BuildFileUrl(config, raw: true, resolveLfs);
         AppLog.Info(
             $"GitLab raw text download starting. Url={url}, TokenPresent={!string.IsNullOrWhiteSpace(config.PrivateToken)}");
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        ApplyAuthentication(request, config);
-
         try
         {
-            using var response =
-                await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await SendAsync(HttpMethod.Get, url, cancellationToken, config);
             AppLog.Info(
                 $"GitLab raw text response received. StatusCode={(int)response.StatusCode}, Reason={response.ReasonPhrase}");
             if (!response.IsSuccessStatusCode)
@@ -353,6 +340,64 @@ public sealed class GitLabFileClient
             throw new LauncherException(AppText.Format("ErrorNetworkGitLabDownload", ex.Message), ex);
         }
     }
+
+
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method, Uri url, CancellationToken cancellationToken, LauncherConfig? config = null)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (_retryAfter.TryGetValue(url, out var retryAt))
+            {
+                var remaining = retryAt - DateTimeOffset.UtcNow;
+                if (remaining > TimeSpan.Zero)
+                {
+                    throw RateLimitError(remaining);
+                }
+
+                _retryAfter.TryRemove(new KeyValuePair<Uri, DateTimeOffset>(url, retryAt));
+            }
+
+            using var request = new HttpRequestMessage(method, url);
+            if (config is not null)
+            {
+                ApplyAuthentication(request, config);
+            }
+
+            var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.StatusCode != HttpStatusCode.TooManyRequests)
+            {
+                return response;
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            TimeSpan delay;
+            using (response)
+            {
+                var retryAfter = response.Headers.RetryAfter;
+                delay = retryAfter?.Delta
+                    ?? (retryAfter?.Date is { } date ? date - now : TimeSpan.FromSeconds(attempt == 0 ? 3 : 30));
+                if (delay < TimeSpan.Zero)
+                {
+                    delay = TimeSpan.Zero;
+                }
+            }
+
+            retryAt = now + delay;
+            _retryAfter.AddOrUpdate(url, retryAt, (_, previous) => previous > retryAt ? previous : retryAt);
+            AppLog.Warn($"GitLab rate-limited {method} {url}. Attempt={attempt + 1}, RetryAfter={delay.TotalSeconds:F1}s");
+            if (attempt > 0 || delay > TimeSpan.FromSeconds(5))
+            {
+                throw RateLimitError(delay);
+            }
+
+            await Task.Delay(delay + TimeSpan.FromMilliseconds(50), cancellationToken);
+        }
+    }
+
+    private static LauncherException RateLimitError(TimeSpan wait)
+        => new(AppText.Format("ErrorGitLabRateLimited", Math.Max(1, Math.Ceiling(wait.TotalSeconds))));
 
     private static Uri BuildFileUrl(LauncherConfig config, bool raw, bool resolveLfs = true)
     {

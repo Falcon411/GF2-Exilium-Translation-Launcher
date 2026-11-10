@@ -79,6 +79,9 @@
   <data name="ErrorGitLabHeaderMissing" xml:space="preserve">
     <value>GitLab не вернул ожидаемый заголовок {0}.</value>
   </data>
+  <data name="ErrorGitLabRateLimited" xml:space="preserve">
+    <value>GitLab временно ограничил запросы (429). Повторите попытку через {0} сек.</value>
+  </data>
   <data name="ErrorGitLabStatusCheck" xml:space="preserve">
     <value>GitLab вернул {0} {1} при проверке удаленного файла.</value>
   </data>
